@@ -1,0 +1,83 @@
+#include "ReplayBuffer.h"
+
+ReplayBuffer::ReplayBuffer(size_t capacity)
+    : capacity_(capacity) {}
+
+void ReplayBuffer::add(torch::Tensor state,
+                       torch::Tensor action,
+                       torch::Tensor reward,
+                       torch::Tensor next_state,
+                       torch::Tensor done) {
+    if (states_.size() >= capacity_) {
+        states_.pop_front();
+        actions_.pop_front();
+        rewards_.pop_front();
+        next_states_.pop_front();
+        dones_.pop_front();
+    }
+
+    states_.push_back(state.view({-1}));
+    actions_.push_back(action.view({-1}));
+    rewards_.push_back(reward.view({-1}));
+    next_states_.push_back(next_state.view({-1}));
+    dones_.push_back(done.view({-1}));
+}
+
+size_t ReplayBuffer::size() const {
+    return states_.size();
+}
+
+// std::tuple<torch::Tensor, torch::Tensor, torch::Tensor,
+//            torch::Tensor, torch::Tensor>
+// ReplayBuffer::sample(size_t batch_size) {
+//     std::vector<int> indices(batch_size);
+//     for (size_t i = 0; i < batch_size; ++i)
+//         indices[i] = rand() % states_.size();
+
+//     auto stack_batch = [](const std::deque<torch::Tensor>& buffer,
+//                           const std::vector<int>& idx) {
+//         std::vector<torch::Tensor> batch;
+//         for (int i : idx)
+//             batch.push_back(buffer[i]);
+//         return torch::stack(batch);
+//     };
+
+//     return {
+//         stack_batch(states_, indices),
+//         stack_batch(actions_, indices),
+//         stack_batch(rewards_, indices),
+//         stack_batch(next_states_, indices),
+//         stack_batch(dones_, indices)
+//     };
+// }
+
+
+std::tuple<torch::Tensor, torch::Tensor, torch::Tensor,torch::Tensor, torch::Tensor>
+ReplayBuffer::sample(size_t batch_size)
+ {
+    std::vector<torch::Tensor> state_batch;
+    std::vector<torch::Tensor> action_batch;
+    std::vector<torch::Tensor> reward_batch;
+    std::vector<torch::Tensor> next_state_batch;
+    std::vector<torch::Tensor> done_batch;
+
+    for (size_t i = 0; i < batch_size; ++i) {
+        int index = rand() % states_.size();  // 随机索引
+
+        state_batch.push_back(states_[index]);
+        action_batch.push_back(actions_[index]);
+        reward_batch.push_back(rewards_[index]);
+        next_state_batch.push_back(next_states_[index]);
+        done_batch.push_back(dones_[index]);
+    }
+
+    torch::Tensor states = torch::stack(state_batch);
+    torch::Tensor actions = torch::stack(action_batch);
+    torch::Tensor rewards = torch::stack(reward_batch);
+    torch::Tensor next_states = torch::stack(next_state_batch);
+    torch::Tensor dones = torch::stack(done_batch);
+    std::cout << "ns_batch shape: " << next_states.sizes() << std::endl;
+    std::cout << "a_next shape: " << dones.sizes() << std::endl;
+
+    return std::make_tuple(states, actions, rewards, next_states, dones);
+}

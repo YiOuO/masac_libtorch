@@ -1,0 +1,15 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Train_sac(LLDB)",
+      "type": "lldb",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/train_sac",
+      "args": [],
+      "cwd": "${workspaceFolder}",
+      "stopOnEntry": false,
+      "runInTerminal": true
+    }
+  ]
+}

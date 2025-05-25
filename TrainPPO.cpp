@@ -7,7 +7,6 @@
 #include "TestEnvironment.h"
 
 int main() {
-
     // Random engine.
     std::random_device rd;
     std::mt19937 re(rd());

@@ -80,6 +80,7 @@ struct TestEnvironment
 
         return reward;
     }
+    //- compute the distance between current postion x with goal
     double GoalDist(Eigen::Vector2d& x) 
     { 
         return (goal_ - x).norm();
