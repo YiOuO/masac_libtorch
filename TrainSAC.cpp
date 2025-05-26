@@ -22,20 +22,18 @@ int main()
     // SAC Model.
     uint n_in = 4;
     uint n_out = 2;
-    double std = 2e-2;
-    float lr = 1e-3, alpha_lr = 1e-3, alpha = 0.2, gamma = 0.99, tau=0.005;
+    double std = 1e-2;
+    float lr = 3e-4, alpha_lr = 1e-3, alpha = 0.1, gamma = 0.99, tau=0.005;
     SAC sac(n_in,n_out,alpha,gamma,tau,lr);
     
     // Replay buffer
-    ReplayBuffer buffer(10000);
+    ReplayBuffer buffer(100000);
 
     // Training loop.
     uint n_iter = 10000;
-    uint n_steps = 2048;
-    uint n_epochs = 15;
-    uint batch_size = 2000;
+    uint n_epochs = 30;
+    uint batch_size = 2048;
     uint mini_batch_size = 512;
-    double beta = 1e-3;
 
     // Output.
     std::ofstream out;
@@ -56,36 +54,33 @@ int main()
         printf("epoch %u/%u\n", e, n_epochs);
         for (auto i=0; i<n_iter; i++)
         {
+            // std::cout<<"i "<<i<<std::endl;
             // Sate of env.
             auto state = env.State();
 
             // Play
             auto [action, log_prob] = sac.actor->sample(state);
-            // std::cout << "action:\t" << action << std::endl;
-            // std::cout << "log——prob:\t" << log_prob << std::endl;
-
             auto action_cpu = action.squeeze().cpu();
             double x_act = action_cpu[0].item<double>();
             double y_act = action_cpu[1].item<double>();    
             auto sd = env.Act(x_act,y_act);
+            // episode, agent_x, agent_y, goal_x, goal_y, AGENT=(PLAYING, WON, LOST, RESETTING)
+            out << e << ", " << env.pos_(0) << ", " << env.pos_(1) << ", " << env.goal_(0) << ", " << env.goal_(1) << ", " << std::get<1>(sd) << "\n";
             // Reward
             auto reward = env.Reward(std::get<1>(sd));
             auto done = std::get<2>(sd);
-            // std::cout << "rewards :\t" << env.Reward(std::get<1>(sd)) << std::endl;
-            // std::cout << "dones :\t" << std::get<2>(sd) << std::endl;
             avg_reward += reward.item<double>()/n_iter;
 
             // New state
             auto next_state = env.State();
-
-            std::cout << "ns_batch shape: " << state.sizes() << std::endl;
-            std::cout << "a_next shape: " << done.sizes() << std::endl;
-         
+            // std::cout<<"next state "<<next_state<<std::endl;
+            // Add to buffer 
             buffer.add(state,action,reward,next_state,done);
 
+            // Update
             if(buffer.size() > batch_size)
             {
-                // Update NN
+                // Train NN
                 sac.train_step(buffer, mini_batch_size);
                 
             }
@@ -127,8 +122,5 @@ int main()
 
     out.close();
 
-    return 0;
-
-    /* code */
     return 0;
 }

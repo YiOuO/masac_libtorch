@@ -62,25 +62,25 @@ struct TestEnvironment
     }    
     auto Reward(int status) -> torch::Tensor
     {
-        torch::Tensor reward = torch::full({1, 1}, old_dist_ - GoalDist(pos_), torch::kF64);
+        torch::Tensor reward = 10*torch::full({1, 1}, old_dist_ - GoalDist(pos_), torch::kF64);
         
         switch (status)
         {
             case PLAYING:
                 break;
             case WON:
-                reward[0][0] += 10.;
+                reward[0][0] += 100.;
                 printf("won, reward: %f\n", reward[0][0].item<double>());
                 break;
             case LOST:
-                reward[0][0] -= 10.;
+                reward[0][0] -= 100.;
                 printf("lost, reward: %f\n", reward[0][0].item<double>());
                 break;
         }
 
         return reward;
     }
-    //- compute the distance between current postion x with goal
+    //- compute the distance between current postion with goal
     double GoalDist(Eigen::Vector2d& x) 
     { 
         return (goal_ - x).norm();

@@ -6,7 +6,7 @@ CXX_DEFINES = -DUSE_C10D_GLOO -DUSE_DISTRIBUTED -DUSE_RPC -DUSE_TENSORPIPE
 
 CXX_INCLUDES = -I/opt/homebrew/include/eigen3 -I/Users/abc/Desktop/test/ppo-github/ppo_libtorch -isystem /Users/abc/libtorch/libtorch/include -isystem /Users/abc/libtorch/libtorch/include/torch/csrc/api/include
 
-CXX_FLAGSarm64 = -g -O0 -std=gnu++17 -arch arm64
+CXX_FLAGSarm64 = -g -O2 -std=gnu++17 -arch arm64
 
-CXX_FLAGS = -g -O0 -std=gnu++17 -arch arm64
+CXX_FLAGS = -g -O2 -std=gnu++17 -arch arm64
 

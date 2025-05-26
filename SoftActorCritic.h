@@ -41,36 +41,30 @@ public:
     {
         if (buffer.size() < batch_size) return;
 
-        auto [s_batch, a_batch, r_batch, ns_batch, d_batch] =
-            buffer.sample(batch_size);
+        auto [s_batch, a_batch, r_batch, ns_batch, d_batch] = buffer.sample(batch_size);
+        //---------- Critic update ----------
+        torch::Tensor q_target;
+        {
+            torch::NoGradGuard no_grad;
 
-        // ---------- Critic update ----------
-        auto [a_next, logp_next] = actor->sample(ns_batch);
-        std::cout << "ns_batch shape: " << ns_batch.sizes() << std::endl;
-        std::cout << "a_next shape: " << a_next.sizes() << std::endl;
-        auto q1_next = target1->forward(ns_batch, a_next);
-        std::cout<<"gogogo "<<std::endl;
-        auto q2_next = target2->forward(ns_batch, a_next);
-        std::cout<<"gogogo "<<std::endl;
-        auto q_target = r_batch +
-                        gamma_ * (1 - d_batch) *
-                        (torch::min(q1_next, q2_next) - alpha_ * logp_next);
-
+            auto [a_next, logp_next] = actor->sample(ns_batch);
+            auto q1_next = target1->forward(ns_batch, a_next);
+            auto q2_next = target2->forward(ns_batch, a_next);
+            q_target = r_batch +
+                    gamma_ * (1 - d_batch) *
+                    (torch::min(q1_next, q2_next) - alpha_ * logp_next);
+        }       
         auto q1 = critic1->forward(s_batch, a_batch);
         auto q2 = critic2->forward(s_batch, a_batch);
-
-        auto loss1 = torch::mse_loss(q1, q_target.detach());
-        auto loss2 = torch::mse_loss(q2, q_target.detach());
+        auto critic_loss = torch::mse_loss(q1, q_target) + torch::mse_loss(q2, q_target);
 
         critic1_opt.zero_grad();
-        loss1.backward();
-        critic1_opt.step();
-
         critic2_opt.zero_grad();
-        loss2.backward();
+        critic_loss.backward();
+        critic1_opt.step();
         critic2_opt.step();
 
-        // ---------- Actor update ----------
+        // // ---------- Actor update ----------
         auto [a_pred, logp_pred] = actor->sample(s_batch);
         auto q_pred = torch::min(critic1->forward(s_batch, a_pred),
                                  critic2->forward(s_batch, a_pred));
@@ -84,6 +78,10 @@ public:
         torch::NoGradGuard no_grad;
         soft_update(critic1, target1);
         soft_update(critic2, target2);
+        // std::cout << "actor_loss: " << actor_loss.item<double>()
+        //   << ", critic_loss: " << critic_loss.item<double>()
+        //   << ", avg_q: " << q_pred.mean().item<double>()
+        //   << ", logp: " << logp_pred.mean().item<double>() << std::endl;
     }
 
     // Optionally: save/load model weights
@@ -115,18 +113,13 @@ private:
     /**
      * Soft update: target ← (1−τ)·target + τ·source
      */
-    void soft_update(const Critic& source, Critic& target)
-    {
-        auto source_params  = source->named_parameters();
-        auto target_params  = target->named_parameters();
-
-        for (const auto& item : source->named_parameters()) {
-            const auto& name = item.key();
-            if (target_params.contains(name)) {
-                auto& t_param = target_params[name];
-                t_param.mul_(1.0 - tau_);
-                t_param.add_(tau_ * item.value());
-            }
+    void soft_update(const Critic& source, Critic& target) {
+        torch::NoGradGuard no_grad;
+        auto target_params = target->parameters();
+        auto source_params = source->parameters();
+        for (size_t i = 0; i < target_params.size(); ++i) {
+            target_params[i].data().mul_(1.0 - tau_);
+            target_params[i].data().add_(tau_ * source_params[i].data());
         }
     }
 
@@ -134,6 +127,7 @@ private:
      * Hard update: target ← source
      */
     void hard_update(const Critic& source, Critic& target) {
+        torch::NoGradGuard no_grad;
         auto target_params = target->parameters();
         auto source_params = source->parameters();
         for (size_t i = 0; i < target_params.size(); ++i) {

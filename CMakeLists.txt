@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
 project(ppo)
 # ✅ 开启调试构建模式并禁用优化（断点可用）
-# set(CMAKE_BUILD_TYPE Debug)
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0")
+set(CMAKE_BUILD_TYPE Debug)
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O2")
 # 编译标准 & 架构（适配 macOS M 系列）
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_OSX_ARCHITECTURES "arm64" CACHE STRING "" FORCE)

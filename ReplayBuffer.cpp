@@ -16,11 +16,11 @@ void ReplayBuffer::add(torch::Tensor state,
         dones_.pop_front();
     }
 
-    states_.push_back(state.view({-1}));
-    actions_.push_back(action.view({-1}));
-    rewards_.push_back(reward.view({-1}));
-    next_states_.push_back(next_state.view({-1}));
-    dones_.push_back(done.view({-1}));
+    states_.push_back(state.detach().clone().view({-1}));
+    actions_.push_back(action.detach().clone().view({-1}));
+    rewards_.push_back(reward.detach().clone().view({-1}));
+    next_states_.push_back(next_state.detach().clone().view({-1}));
+    dones_.push_back(done.detach().clone().view({-1}));
 }
 
 size_t ReplayBuffer::size() const {
@@ -76,8 +76,6 @@ ReplayBuffer::sample(size_t batch_size)
     torch::Tensor rewards = torch::stack(reward_batch);
     torch::Tensor next_states = torch::stack(next_state_batch);
     torch::Tensor dones = torch::stack(done_batch);
-    std::cout << "ns_batch shape: " << next_states.sizes() << std::endl;
-    std::cout << "a_next shape: " << dones.sizes() << std::endl;
 
     return std::make_tuple(states, actions, rewards, next_states, dones);
 }
