@@ -27,31 +27,6 @@ size_t ReplayBuffer::size() const {
     return states_.size();
 }
 
-// std::tuple<torch::Tensor, torch::Tensor, torch::Tensor,
-//            torch::Tensor, torch::Tensor>
-// ReplayBuffer::sample(size_t batch_size) {
-//     std::vector<int> indices(batch_size);
-//     for (size_t i = 0; i < batch_size; ++i)
-//         indices[i] = rand() % states_.size();
-
-//     auto stack_batch = [](const std::deque<torch::Tensor>& buffer,
-//                           const std::vector<int>& idx) {
-//         std::vector<torch::Tensor> batch;
-//         for (int i : idx)
-//             batch.push_back(buffer[i]);
-//         return torch::stack(batch);
-//     };
-
-//     return {
-//         stack_batch(states_, indices),
-//         stack_batch(actions_, indices),
-//         stack_batch(rewards_, indices),
-//         stack_batch(next_states_, indices),
-//         stack_batch(dones_, indices)
-//     };
-// }
-
-
 std::tuple<torch::Tensor, torch::Tensor, torch::Tensor,torch::Tensor, torch::Tensor>
 ReplayBuffer::sample(size_t batch_size)
  {

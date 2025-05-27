@@ -8,24 +8,28 @@ public:
     SAC(int state_dim,
         int action_dim,
         double alpha,
+        double alpha_lr,
         double gamma,
         double tau,
         double lr)
         : actor(state_dim, action_dim),
-          critic1(state_dim , action_dim),
-          critic2(state_dim , action_dim),
-          target1(state_dim , action_dim),
-          target2(state_dim , action_dim),
-          actor_opt(actor->parameters(), lr),
-          critic1_opt(critic1->parameters(), lr),
-          critic2_opt(critic2->parameters(), lr),
-          alpha_(alpha), gamma_(gamma), tau_(tau)
+        critic1(state_dim , action_dim),
+        critic2(state_dim , action_dim),
+        target1(state_dim , action_dim),
+        target2(state_dim , action_dim),
+        log_alpha(torch::log(torch::tensor({alpha}, torch::kF64)).set_requires_grad(true)), // ✅ 初始化 log_alpha
+        alpha_opt({log_alpha}, alpha_lr), 
+        actor_opt(actor->parameters(), lr),
+        critic1_opt(critic1->parameters(), lr),
+        critic2_opt(critic2->parameters(), lr),
+        alpha_(alpha),
+        gamma_(gamma),
+        tau_(tau),
+        target_entropy(-static_cast<double>(action_dim))
     {
-        // // Initialize target networks with source network parameters
         hard_update(critic1, target1);
         hard_update(critic2, target2);
 
-        // Use double precision
         actor  ->to(torch::kF64);
         critic1->to(torch::kF64);
         critic2->to(torch::kF64);
@@ -64,7 +68,7 @@ public:
         critic1_opt.step();
         critic2_opt.step();
 
-        // // ---------- Actor update ----------
+        //---------- Actor update ----------
         auto [a_pred, logp_pred] = actor->sample(s_batch);
         auto q_pred = torch::min(critic1->forward(s_batch, a_pred),
                                  critic2->forward(s_batch, a_pred));
@@ -74,7 +78,15 @@ public:
         actor_loss.backward();
         actor_opt.step();
 
-        // ---------- Soft update target networks ----------
+        //---------- Alpha update ----------
+        // auto alpha_loss = -(log_alpha * (logp_pred + target_entropy).detach()).mean();
+        auto alpha_loss = -(log_alpha * (logp_pred.detach() + target_entropy)).mean();
+        alpha_opt.zero_grad();
+        alpha_loss.backward();
+        alpha_opt.step();
+        alpha_ = log_alpha.exp().item<double>();  // update scalar        
+
+        //---------- Soft update target networks ----------
         torch::NoGradGuard no_grad;
         soft_update(critic1, target1);
         soft_update(critic2, target2);
@@ -89,14 +101,21 @@ public:
         torch::save(actor,   path_prefix + "_actor.pt");
         torch::save(critic1, path_prefix + "_critic1.pt");
         torch::save(critic2, path_prefix + "_critic2.pt");
+        torch::save(log_alpha, path_prefix + "_log_alpha.pt");
+        std::cout<< "best model saved "<<std::endl;
     }
+
     void load(const std::string& path_prefix) {
         torch::load(actor,   path_prefix + "_actor.pt");
         torch::load(critic1, path_prefix + "_critic1.pt");
         torch::load(critic2, path_prefix + "_critic2.pt");
+        torch::load(log_alpha, path_prefix + "_log_alpha.pt");
         hard_update(critic1, target1);
         hard_update(critic2, target2);
+        alpha_ = log_alpha.exp().item<double>();
+        std::cout<< "best model loaded "<<std::endl;
     }
+
 
     // Public members for inference or external access
     Actor   actor;
@@ -104,11 +123,13 @@ public:
     Critic  target1, target2;   // Target Q-networks
 
 private:
+    torch::Tensor log_alpha;
     torch::optim::Adam actor_opt;
     torch::optim::Adam critic1_opt;
     torch::optim::Adam critic2_opt;
-
-    double alpha_, gamma_, tau_;
+    torch::optim::Adam alpha_opt;
+    
+    double alpha_, gamma_, tau_, target_entropy;
 
     /**
      * Soft update: target ← (1−τ)·target + τ·source

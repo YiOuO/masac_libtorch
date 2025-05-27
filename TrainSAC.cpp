@@ -23,15 +23,15 @@ int main()
     uint n_in = 4;
     uint n_out = 2;
     double std = 1e-2;
-    float lr = 3e-4, alpha_lr = 1e-3, alpha = 0.1, gamma = 0.99, tau=0.005;
-    SAC sac(n_in,n_out,alpha,gamma,tau,lr);
+    float lr = 5e-4, alpha_lr = 1e-3, alpha = 0.1, gamma = 0.99, tau=0.005;
+    SAC sac(n_in,n_out,alpha,alpha_lr,gamma,tau,lr);
     
     // Replay buffer
     ReplayBuffer buffer(100000);
 
     // Training loop.
     uint n_iter = 10000;
-    uint n_epochs = 30;
+    uint n_epochs = 20;
     uint batch_size = 2048;
     uint mini_batch_size = 512;
 

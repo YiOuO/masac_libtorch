@@ -1,10 +1,10 @@
-# PPO Pytorch C++
+# SAC Pytorch C++
 
-This is an implementation of the [proximal policy optimization algorithm](https://arxiv.org/abs/1707.06347) for the C++ API of Pytorch. It uses a simple `TestEnvironment` to test the algorithm. Below is a small visualization of the environment, the algorithm is tested in.
+This is an implementation of the [Soft Actor-Critic algorithm](https://doi.org/10.48550/arXiv.1801.01290) for the C++ API of Pytorch. It uses a simple `TestEnvironment` to test the algorithm. Below is a small visualization of the environment, the algorithm is tested in. 
 <br>
 <figure>
-  <p align="center"><img src="img/test_mode.gif" width="50%" height="50%" hspace="0"></p>
-  <figcaption>Fig. 1: The agent in testing mode. </figcaption>
+  <p align="center"><img src="img/test_mode_1.gif" width="50%" height="50%" hspace="0"></p>
+ <figcaption style="text-align:center;">Fig. 1: The agent in testing mode.</figcaption>
 </figure>
 <br><br>
 
@@ -15,7 +15,7 @@ Do
 ```shell
 mkdir build
 cd build
-cmake -DCMAKE_PREFIX_PATH=/absolut/path/to/libtorch ..
+cmake ..
 make
 ```
 
@@ -23,7 +23,7 @@ make
 Run the executable with
 ```shell
 cd build
-./train_ppo
+./train_sac
 ```
 To plot the results, run
 ```shell
@@ -41,7 +41,7 @@ It should produce something like shown below.
 The algorithm can also be used in test mode, once trained. Therefore, run
 ```shell
 cd build
-./test_ppo
+./test_sac
 ```
 To plot the results, run
 ```shell
@@ -54,3 +54,9 @@ The results are saved to `data/data.csv` and can be visualized by running `pytho
 python plot.py --help
 ```
 for help.
+
+## Note
+You may also refer to the implementations based on the PPO (Proximal Policy Optimization) and TD3 (Twin Delayed Deep Deterministic Policy Gradient) algorithms, which are available in the following repositories:
+
+**PPO** : https://github.com/mhubii/ppo_libtorch
+**TD3** : https://github.com/hrshl212/TD3-libtorch
