@@ -11,10 +11,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O2")
 
 # LibTorch and Eigen paths
-set(CMAKE_PREFIX_PATH "/Users/abc/libtorch/libtorch")
+set(CMAKE_PREFIX_PATH "/home/verdure/torch/libtorch")
 find_package(Torch REQUIRED)
 include_directories(${TORCH_INCLUDE_DIRS})
-include_directories("/opt/homebrew/include/eigen3")
+include_directories("/usr/include/eigen3")
 include_directories(${CMAKE_CURRENT_SOURCE_DIR})
 
 # Source files
@@ -40,4 +40,6 @@ add_custom_target(force_headers_indexing SOURCES
     SoftActorCritic.h
     TestEnvironment.h
     ReplayBuffer.h
+    MultiAgentEnvironment.h
+    MultiSoftActorCritic.h
 )

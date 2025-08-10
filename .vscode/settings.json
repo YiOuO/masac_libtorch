@@ -83,8 +83,12 @@
 		"queue": "cpp",
 		"compare": "cpp",
 		"concepts": "cpp",
-		"format": "cpp"
+		"format": "cpp",
+		"numbers": "cpp",
+		"semaphore": "cpp",
+		"stop_token": "cpp"
 	},
+	"cmake.buildArgs": ["-j2"],
       "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",
   "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools",
   "C_Cpp.intelliSenseEngine": "default"
