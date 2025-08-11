@@ -19,117 +19,142 @@ int main()
     // ===== Environment =====
     const int numberOfAgents = 3;
     std::vector<Eigen::Vector2d> initialGoals(numberOfAgents);
-    for (int i = 0; i < numberOfAgents; ++i) {
+    for (int i = 0; i < numberOfAgents; ++i)
+    {
         initialGoals[i](0) = static_cast<double>(uniformInt(randomEngine));
         initialGoals[i](1) = static_cast<double>(uniformInt(randomEngine));
     }
-    MultiAgentEnvironment environment(numberOfAgents, initialGoals);
+    MultiAgentEnvironment env(numberOfAgents, initialGoals);
 
-    // // Multiple SAC Models.
-    // std::vector<SAC> agents;
+    // Multiple SAC Models.
+    const int local_obs_dim = 4; // [pos_x, pos_y, goal_x, goal_y]
+    const int action_dim = 2;    // action = (ax, ay) in [-1, 1] via tanh in Actor
+    const double alpha = 0.1;
+    const double gamma = 0.99;
+    const double tau = 0.005;
+    const double lr = 1e-3;
+    const double alpha_lr = 1e-3;
 
-    // // SAC Model.
-    // uint n_in = 4;
-    // uint n_out = 2;
-    // double std = 1e-2;
-    // float lr = 5e-4, alpha_lr = 1e-3, alpha = 0.1, gamma = 0.99, tau=0.005;
-    // SAC sac(n_in,n_out,alpha,alpha_lr,gamma,tau,lr);
-    
-    // // Replay buffer
-    // ReplayBuffer buffer(100000);
+    MultiAgentSAC masac(numberOfAgents, local_obs_dim, action_dim, alpha, alpha_lr, gamma, tau, lr);
 
-    // // Training loop.
-    // uint n_iter = 10000;
-    // uint n_epochs = 20;
-    // uint batch_size = 2048;
-    // uint mini_batch_size = 512;
+    // Replay buffer
+    ReplayBuffer buffer(100000);
 
-    // // Output.
-    // std::ofstream out;
-    // out.open("../data/data.csv");
+    // Training loop.
+    const uint n_iter = 2500;
+    const uint n_epochs = 30;
+    const uint batch_size = 512;
+    const uint mini_batch_size = 128;
 
-    // // episode, agent_x, agent_y, goal_x, goal_y, STATUS=(PLAYING, WON, LOST, RESETTING)
-    // out << 1 << ", " << env.pos_(0) << ", " << env.pos_(1) << ", " << env.goal_(0) << ", " << env.goal_(1) << ", " << RESETTING << "\n";
+    // ===== Logging =====
+    std::ofstream csv("../data/ma_independent_q.csv");
+    csv << "epoch";
+    for (int i = 0; i < numberOfAgents; ++i)
+        csv << ",pos_x" << i << ",pos_y" << i << ",goal_x" << i << ",goal_y" << i;
+    for (int i = 0; i < numberOfAgents; ++i)
+        csv << ",reward" << i;
+    csv << ",done,status\n";
 
-    // // Counter.
-    // uint c = 0;
+    // 每个 epoch 的 reward汇总
+    std::ofstream epoch_txt("../data/ma_epoch_rewards.txt",std::ios::out | std::ios::trunc);
+    epoch_txt << "epoch";
+    for (int i = 0; i < numberOfAgents; ++i)
+        epoch_txt << " reward_sum_" << i;
+    epoch_txt << " reward_sum_all\n";
+    epoch_txt.close(); 
 
-    // // Average reward.
-    // double best_avg_reward = 0.;
-    // double avg_reward = 0.;
+    double bestAverageReward = -1e18;
 
-    // for (uint e=1;e<=n_epochs;e++)
-    // {
-    //     printf("epoch %u/%u\n", e, n_epochs);
-    //     for (auto i=0; i<n_iter; i++)
-    //     {
-    //         // std::cout<<"i "<<i<<std::endl;
-    //         // Sate of env.
-    //         auto state = env.State();
+    // ===== Training Loop =====
+    for (auto epoch = 0; epoch < n_epochs; ++epoch)
+    {
+        double reward_sum_all = 0.0;
+        std::vector<double> reward_sum_per_agent(numberOfAgents, 0.0);
 
-    //         // Play
-    //         auto [action, log_prob] = sac.actor->sample(state);
-    //         auto action_cpu = action.squeeze().cpu();
-    //         double x_act = action_cpu[0].item<double>();
-    //         double y_act = action_cpu[1].item<double>();    
-    //         auto sd = env.Act(x_act,y_act);
-    //         // episode, agent_x, agent_y, goal_x, goal_y, AGENT=(PLAYING, WON, LOST, RESETTING)
-    //         out << e << ", " << env.pos_(0) << ", " << env.pos_(1) << ", " << env.goal_(0) << ", " << env.goal_(1) << ", " << std::get<1>(sd) << "\n";
-    //         // Reward
-    //         auto reward = env.Reward(std::get<1>(sd));
-    //         auto done = std::get<2>(sd);
-    //         avg_reward += reward.item<double>()/n_iter;
+        printf("Epoch %u/%u\n", epoch + 1, n_epochs);
+        double averageRewardEpoch = 0.0;
 
-    //         // New state
-    //         auto next_state = env.State();
-    //         // std::cout<<"next state "<<next_state<<std::endl;
-    //         // Add to buffer 
-    //         buffer.add(state,action,reward,next_state,done);
+        for (uint64_t t = 0; t < n_iter; ++t)
+        {
+            //- 1) Prepare globalstate and per-agent local observations
+            auto globalSate = env.getGlobalState();
 
-    //         // Update
-    //         if(buffer.size() > batch_size)
-    //         {
-    //             // Train NN
-    //             sac.train_step(buffer, mini_batch_size);
-                
-    //         }
+            std::vector<torch::Tensor> localObservations(numberOfAgents);
+            for (int i = 0; i < numberOfAgents; i++)
+            {
+                localObservations[i] = env.getLocalObservation(i);
+            }
 
-    //         if(done.item<double>() == 1.)
-    //         {
-    //             // Set new goal.
-    //             double x_new = double(dist(re)); 
-    //             double y_new = double(dist(re));
-    //             env.SetGoal(x_new, y_new);
-    //             // Reset the position of the agent.
-    //             env.Reset();
-    //             // episode, agent_x, agent_y, goal_x, goal_y, STATUS=(PLAYING, WON, LOST, RESETTING)
-    //             out << e << ", " << env.pos_(0) << ", " << env.pos_(1) << ", " << env.goal_(0) << ", " << env.goal_(1) << ", " << RESETTING << "\n";               
-    //         }
+            //- 2) Sample joint action from current policy (stochastic)
+            auto jointAction = masac.act(localObservations); // [1, 2*N]
 
-    //     }
+            // 3) Interact with the environment
+            auto [nextGlobalState, rewardVector, doneFlag, status] = env.Step(jointAction);
 
-    //     // Save the best net.
-    //     if (avg_reward > best_avg_reward) {
+            // 4) Push transition into replay buffer note: rewardVector has shape [1, N]
+            buffer.add(globalSate, jointAction, rewardVector, nextGlobalState, doneFlag);
+            // Accumulate epoch-average reward (mean of per-agent rewards here)
+            averageRewardEpoch += rewardVector.mean().item<double>() / static_cast<double>(n_epochs);
+            // save reward to csv file
+            for (int i = 0; i < numberOfAgents; ++i)
+            {
+                double ri = rewardVector[0][i].item<double>();
+                reward_sum_per_agent[i] += ri;
+                reward_sum_all += ri;
+            }
 
-    //         best_avg_reward = avg_reward;
-    //         printf("Best average reward: %f\n", best_avg_reward);
-    //         sac.save("best_model");
-    //     }
+            // 5) Learn
+            if (buffer.size() > batch_size)
+            {
+                // std::cout<<"train step now "<<std::endl;
+                masac.trainStep(buffer, mini_batch_size);
+            }
+            // 6) Episode termination handling
+            if (doneFlag.item<double>() == 1.0)
+            {
+                // Re-initialize new goals and reset positions
+                for (int i = 0; i < numberOfAgents; ++i)
+                {
+                    env.goals_[i](0) = static_cast<double>(uniformInt(randomEngine));
+                    env.goals_[i](1) = static_cast<double>(uniformInt(randomEngine));
+                }
+                env.reset();
+            }
 
-    //     avg_reward = 0.;
-    //     // Reset the position of goal to (x_new, y_new).
-    //     double x_new = double(dist(re)); 
-    //     double y_new = double(dist(re));
-    //     env.SetGoal(x_new, y_new);
+            // 7) CSV logging for analysis
+            csv << epoch;
+            for (int i = 0; i < numberOfAgents; ++i)
+                csv << "," << env.positions_[i](0)
+                    << "," << env.positions_[i](1)
+                    << "," << env.goals_[i](0)
+                    << "," << env.goals_[i](1);
+            for (int i = 0; i < numberOfAgents; ++i)
+                csv << "," << rewardVector[0][i].item<double>();
+            csv << "," << doneFlag.item<double>() << "," << status << "\n";
+        }
 
-    //     // Reset the position of the agent to (0,0).
-    //     env.Reset();
+        if (averageRewardEpoch > bestAverageReward)
+        {
+            bestAverageReward = averageRewardEpoch;
+            std::cout << "[Epoch " << epoch << "] New best average reward = " << bestAverageReward << "\n";
+        }
+        // Optional: randomize for the next epoch as well
+        for (int i = 0; i < numberOfAgents; ++i)
+        {
+            env.goals_[i](0) = static_cast<double>(uniformInt(randomEngine));
+            env.goals_[i](1) = static_cast<double>(uniformInt(randomEngine));
+        }
+        env.reset();
 
-    //     // episode, agent_x, agent_y, goal_x, goal_y, STATUS=(PLAYING, WON, LOST, RESETTING)
-    //     out << e << ", " << env.pos_(0) << ", " << env.pos_(1) << ", " << env.goal_(0) << ", " << env.goal_(1) << ", " << RESETTING << "\n";
-    // }
+        // 记录每个 agent 的 reward
+        epoch_txt.open("../data/ma_epoch_rewards.txt",std::ios::app);
+        epoch_txt << epoch;
+        for (int i = 0; i < numberOfAgents; ++i)
+            epoch_txt << " " << reward_sum_per_agent[i];
+        epoch_txt << " " << reward_sum_all << "\n";
+        epoch_txt.close();
+    }
 
-    // out.close();
-
+    csv.close();
     return 0;
 }

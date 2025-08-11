@@ -86,7 +86,12 @@
 		"format": "cpp",
 		"numbers": "cpp",
 		"semaphore": "cpp",
-		"stop_token": "cpp"
+		"stop_token": "cpp",
+		"__hash_table": "cpp",
+		"__node_handle": "cpp",
+		"span": "cpp",
+		"stack": "cpp",
+		"text_encoding": "cpp"
 	},
 	"cmake.buildArgs": ["-j2"],
       "C_Cpp.default.compileCommands": "${workspaceFolder}/compile_commands.json",

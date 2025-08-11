@@ -38,7 +38,7 @@ def main():
             print(f"[Warning] No data found for epoch {e}, skipping.")
             continue
         # save export time
-        epoch_data = epoch_data[:1500]
+        epoch_data = epoch_data[:150]
         print(f"[Info] Creating animation for epoch {e}, total frames: {len(epoch_data)}")
 
         fig, ax = plt.subplots()
@@ -75,7 +75,7 @@ def main():
             y = epoch_data[frame, 2]
             agent.set_data([x], [y])
 
-            if epoch_data[frame, 5] in [1, 2, 3]:
+            if epoch_data[frame, 6] in [1, 2, 3]:
                 tail = 0
             agent_line.set_data(
                 epoch_data[max(frame - tail, 0):frame, 1],
